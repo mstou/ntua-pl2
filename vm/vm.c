@@ -18,6 +18,7 @@ void loader(){
     // printf("%c",c);
     if(c == '\n'){
       i = (i+1)%ROWS;
+      j = 0;
     }
     else{
       code[i][j] = c;
@@ -54,8 +55,8 @@ next_instruction:
       stack[++top] = b+a;
       NEXT_INSTRUCTION;
 
-    case '-': // substract
-    label_substract:
+    case '-': // subtract
+    label_subtract:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
       a = (top==-1) ? 0 : stack[top--];
@@ -171,6 +172,7 @@ next_instruction:
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
 
       c = code[pc_x][pc_y];
+      if( c == '\0' ) c = ' ';
       if( c != '"'){
         stack[++top] = c;
         goto label_stringmode;
@@ -288,7 +290,7 @@ next_instruction:
     case '4':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 0;
+      stack[++top] = 4;
       NEXT_INSTRUCTION;
 
     case '5':
@@ -321,11 +323,20 @@ next_instruction:
       stack[++top] = 9;
       NEXT_INSTRUCTION;
 
+    case ' ':
+      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
+      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      NEXT_INSTRUCTION;
+
+    case '\0':
+      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
+      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      NEXT_INSTRUCTION;
+
     case '@': // end
     label_end:
       return 0;
   }
-
 
   return 0;
 }
