@@ -5,11 +5,17 @@
 #define ROWS 25
 #define COLS 80
 
-char code[ROWS][COLS]; // the array is initialized to '\0'
+long long code[ROWS][COLS]; // the array is initialized to '\0'
 // we will treat '\0' as the space command, which does nothing,
 // in order to skip filling the whole array with spaces
 static long holdrand = 73L;
 signed long int stack[STACK_SIZE];
+
+int pc_x = 0, pc_y = 0; // row and collumn that the PC points to
+int x_direction = 0, y_direction = 1; // current direction in each axis
+int top = -1; // top points to the top element of the stack
+signed long int a,b; // local varriables to use for items that we pop out of the stack
+
 
 void loader(){
   int i = 0, j = 0;
@@ -32,14 +38,21 @@ int random(){
   // returns a random number between 0 and 3
 }
 
+signed long int pop(){
+  signed long int p = (top==-1) ? 0 : stack[top--];
+  // printf("pop: %ld\n",p);
+  return p;
+}
+
+void push(signed long int x){
+  // printf("push: %ld\n",x);
+  stack[++top] = x;
+}
+
 int main(void){
   loader();
-  register int pc_x = 0, pc_y = 0; // row and collumn that the PC points to
-  register int x_direction = 0, y_direction = 1; // current direction in each axis
-  register int top = -1; // top points to the top element of the stack
-  register unsigned long int a,b; // local varriables to use for items that we pop out of the stack
   char c;
-  int x;
+  signed long int x;
 
   // TODO : implement direct threading & make PC a pointer
   // -- change pop implementation to help branch prediction on (top==-1)
@@ -50,62 +63,62 @@ next_instruction:
     label_add:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      stack[++top] = b+a;
+      a = pop();
+      b = pop();
+      push(b+a);
       NEXT_INSTRUCTION;
 
     case '-': // subtract
     label_subtract:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      stack[++top] = b-a;
+      a = pop();
+      b = pop();
+      push(b-a);
       NEXT_INSTRUCTION;
 
     case '*': // multiply
     label_multiply:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      stack[++top] = b*a;
+      a = pop();
+      b = pop();
+      push(b*a);
       NEXT_INSTRUCTION;
 
     case '/': // divide
     label_divide:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      stack[++top] = b/a;
+      a = pop();
+      b = pop();
+      push(b/a);
       NEXT_INSTRUCTION;
 
     case '%': // modulo
     label_modulo:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      stack[++top] = b%a;
+      a = pop();
+      b = pop();
+      push(b%a);
       NEXT_INSTRUCTION;
 
     case '!': // not
     label_not:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      stack[++top] = (a!=0) ? 0 : 1;
+      a = pop();
+      push((a!=0) ? 0 : 1);
       NEXT_INSTRUCTION;
 
     case '`': // greater
     label_greater:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      stack[top++] = (b > a) ? 1 : 0;
+      a = pop();
+      b = pop();
+      push((b > a) ? 1 : 0);
       NEXT_INSTRUCTION;
 
     case '>': // right
@@ -156,13 +169,13 @@ next_instruction:
 
     case '_': // horizontal if
     label_horizontal_if:
-      a = (top==-1) ? 0 : stack[top--];
+      a = pop();
       if(a == 0) goto label_right;
       else goto label_left;
 
     case '|': // vertical if
     label_vertical_if:
-      a = (top==-1) ? 0 : stack[top--];
+      a = pop();
       if(a == 0) goto label_down;
       else goto label_up;
 
@@ -172,9 +185,13 @@ next_instruction:
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
 
       c = code[pc_x][pc_y];
-      if( c == '\0' ) c = ' ';
+      // if( c == '\0' ) c = ' ';
+      // if(c >= '0' && c <= '9'){
+      //   stack[++top] = c - '0';
+      //   goto label_stringmode;
+      // }
       if( c != '"'){
-        stack[++top] = c;
+        push(c);
         goto label_stringmode;
       }
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
@@ -185,32 +202,33 @@ next_instruction:
     label_dup:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top];
-      stack[++top] = a;
+      a = pop();
+      push(a);
+      push(a);
       NEXT_INSTRUCTION;
 
     case '\\': // swap
     label_swap:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      stack[++top] = a;
-      stack[++top] = b;
+      a = pop();
+      b = pop();
+      push(a);
+      push(b);
       NEXT_INSTRUCTION;
 
     case '$': // pop
     label_pop:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      if(top != -1) top--;
+      pop();
       NEXT_INSTRUCTION;
 
     case '.': // output int
     label_output_int:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
+      a = pop();
       printf("%ld ",a);
       NEXT_INSTRUCTION;
 
@@ -218,7 +236,7 @@ next_instruction:
     label_output_char:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
+      a = pop();
       printf("%c", (char) a);
       NEXT_INSTRUCTION;
 
@@ -232,27 +250,28 @@ next_instruction:
     label_get:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      stack[++top] = code[a][b];
+      a = pop();
+      b = pop();
+      // if(code[a][b] == '\0') code[a][b] = ' ';
+      push(code[a][b]);
       NEXT_INSTRUCTION;
 
     case 'p': // put
     label_put:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      a = (top==-1) ? 0 : stack[top--];
-      b = (top==-1) ? 0 : stack[top--];
-      x = (top==-1) ? 0 : stack[top--];
-      code[a][b] = (char) x;
+      a = pop();
+      b = pop();
+      x = pop();
+      code[a][b] = x;
       NEXT_INSTRUCTION;
 
     case '&': // input int
     label_input_int:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      scanf("%d",&x);
-      stack[top++] = x;
+      scanf("%ld",&x);
+      push(x);
       NEXT_INSTRUCTION;
 
     case '~': // input_character
@@ -260,67 +279,67 @@ next_instruction:
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
       scanf("%c",&c);
-      stack[top++] = c;
+      push(c);
       NEXT_INSTRUCTION;
 
     case '0':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 0;
+      push(0);
       NEXT_INSTRUCTION;
 
     case '1':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 1;
+      push(1);
       NEXT_INSTRUCTION;
 
     case '2':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 2;
+      push(2);
       NEXT_INSTRUCTION;
 
     case '3':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 3;
+      push(3);
       NEXT_INSTRUCTION;
 
     case '4':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 4;
+      push(4);
       NEXT_INSTRUCTION;
 
     case '5':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 5;
+      push(5);
       NEXT_INSTRUCTION;
 
     case '6':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 6;
+      push(6);
       NEXT_INSTRUCTION;
 
     case '7':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 7;
+      push(7);
       NEXT_INSTRUCTION;
 
     case '8':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 8;
+      push(8);
       NEXT_INSTRUCTION;
 
     case '9':
       pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
       pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
-      stack[++top] = 9;
+      push(9);
       NEXT_INSTRUCTION;
 
     case ' ':
