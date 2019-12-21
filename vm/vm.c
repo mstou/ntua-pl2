@@ -16,7 +16,7 @@ static long holdrand = 73L;
 signed long int stack[STACK_SIZE];
 void * labels[256];
 
-void loader(){
+void loader(FILE* fp){
   int i = 0, j = 0;
   char c;
 
@@ -26,7 +26,7 @@ void loader(){
     }
   }
 
-  while((c = getchar_unlocked()) != EOF){
+  while((c = fgetc(fp)) != EOF){
     if(c == '\n'){
       i = (i+1)%ROWS;
       j = 0;
@@ -43,8 +43,9 @@ int random(){
   // returns a random number between 0 and 3
 }
 
-int main(void){
-  loader();
+int main(int argc, char* argv[]){
+
+  FILE *fp = fopen(argv[1],"r");
   char c;
   signed long int x;
   register int pc_x = 0;
@@ -53,6 +54,8 @@ int main(void){
   register int y_direction = 1; // current direction in each axis
   register signed long int * top = stack-1; // top points to the top element of the stack
   register signed long int a,b; // local varriables to use for items that we pop out of the stack
+
+  loader(fp);
 
   labels['0'] = &&label_0;
   labels['1'] = &&label_1;
