@@ -7,11 +7,31 @@
 
 #define pop() (top==stack-1) ? 0 : *(top--)
 #define push(X) *(++top) = (X)
+#define increment_pc_x() {  pc_x += x_direction; if(pc_x == -1) pc_x = ROWS-1; else if(pc_x == ROWS) pc_x = 0;}
+#define increment_pc_y() {  pc_y += y_direction; if(pc_y == -1) pc_y = COLS-1; else if(pc_y == COLS) pc_y = 0;}
+#define increment_pc() {increment_pc_x(); increment_pc_y();}
 
 long long code[ROWS][COLS];
 static long holdrand = 73L;
 signed long int stack[STACK_SIZE];
 void * labels[256];
+
+// int pc_x = 0;
+// int pc_y = 0; // row and collumn that the PC points to
+// int x_direction = 0;
+// int y_direction = 1; // current direction in each axis
+//
+// static inline void increment_pc() {
+//   pc_x += x_direction;
+//   pc_y += y_direction;
+//
+//   if(pc_x < 0) pc_x += ROWS;
+//   else if(pc_x >= ROWS) pc_x -= ROWS;
+//
+//   if(pc_y < 0) pc_y += COLS;
+//   else if(pc_y >= COLS) pc_y -= COLS;
+//
+// }
 
 void loader(){
   int i = 0, j = 0;
@@ -36,8 +56,6 @@ void loader(){
   }
 }
 
-void fill_labels_table();
-
 int random(){
   return (((holdrand = holdrand * 214013L + 2531011L) >> 16) & 0x3);
   // returns a random number between 0 and 3
@@ -47,8 +65,10 @@ int main(void){
   loader();
   char c;
   signed long int x;
-  register int pc_x = 0, pc_y = 0; // row and collumn that the PC points to
-  register int x_direction = 0, y_direction = 1; // current direction in each axis
+  register int pc_x = 0;
+  register int pc_y = 0; // row and collumn that the PC points to
+  register int x_direction = 0;
+  register int y_direction = 1; // current direction in each axis
   register signed long int * top = stack-1; // top points to the top element of the stack
   register signed long int a,b; // local varriables to use for items that we pop out of the stack
 
@@ -97,8 +117,7 @@ next_instruction:
   switch(code[pc_x][pc_y]){
     case '+': // add
     label_add:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       push(b+a);
@@ -106,8 +125,7 @@ next_instruction:
 
     case '-': // subtract
     label_subtract:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       push(b-a);
@@ -115,8 +133,7 @@ next_instruction:
 
     case '*': // multiply
     label_multiply:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       push(b*a);
@@ -124,8 +141,7 @@ next_instruction:
 
     case '/': // divide
     label_divide:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       push(b/a);
@@ -133,8 +149,7 @@ next_instruction:
 
     case '%': // modulo
     label_modulo:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       push(b%a);
@@ -142,16 +157,14 @@ next_instruction:
 
     case '!': // not
     label_not:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       push((a!=0) ? 0 : 1);
       NEXT_INSTRUCTION;
 
     case '`': // greater
     label_greater:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       push((b > a) ? 1 : 0);
@@ -161,32 +174,28 @@ next_instruction:
     label_right:
       x_direction = 0;
       y_direction = 1;
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       NEXT_INSTRUCTION;
 
     case '<': // left
     label_left:
       x_direction = 0;
       y_direction = -1;
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       NEXT_INSTRUCTION;
 
     case '^': // up
     label_up:
       x_direction = -1;
       y_direction = 0;
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       NEXT_INSTRUCTION;
 
     case 'v': // down
     label_down:
       x_direction = 1;
       y_direction = 0;
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       NEXT_INSTRUCTION;
 
     case '?': // random
@@ -217,8 +226,7 @@ next_instruction:
 
     case '"': // stringmode
       label_stringmode:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
 
       c = code[pc_x][pc_y];
       // if( c == '\0' ) c = ' ';
@@ -230,14 +238,12 @@ next_instruction:
         push(c);
         goto label_stringmode;
       }
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       NEXT_INSTRUCTION;
 
     case ':': // dup
     label_dup:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       push(a);
       push(a);
@@ -245,8 +251,7 @@ next_instruction:
 
     case '\\': // swap
     label_swap:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       push(a);
@@ -255,37 +260,33 @@ next_instruction:
 
     case '$': // pop
     label_pop:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       pop();
       NEXT_INSTRUCTION;
 
     case '.': // output int
     label_output_int:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       printf("%ld ",a);
       NEXT_INSTRUCTION;
 
     case ',': // output char
     label_output_char:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       printf("%c", (char) a);
       NEXT_INSTRUCTION;
 
     case '#': // bridge
     label_bridge:
-      pc_x = ((pc_x + 2*x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + 2*y_direction)%COLS + COLS)%COLS;
+      increment_pc();
+      increment_pc();
       NEXT_INSTRUCTION;
 
     case 'g': // get
     label_get:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       // if(code[a][b] == '\0') code[a][b] = ' ';
@@ -294,8 +295,7 @@ next_instruction:
 
     case 'p': // put
     label_put:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       a = pop();
       b = pop();
       x = pop();
@@ -304,94 +304,81 @@ next_instruction:
 
     case '&': // input int
     label_input_int:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       scanf("%ld",&x);
       push(x);
       NEXT_INSTRUCTION;
 
     case '~': // input_character
     label_input_character:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       scanf("%c",&c);
       push(c);
       NEXT_INSTRUCTION;
 
     case '0':
     label_0:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(0);
       NEXT_INSTRUCTION;
 
     case '1':
     label_1:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(1);
       NEXT_INSTRUCTION;
 
     case '2':
     label_2:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(2);
       NEXT_INSTRUCTION;
 
     case '3':
     label_3:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(3);
       NEXT_INSTRUCTION;
 
     case '4':
     label_4:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(4);
       NEXT_INSTRUCTION;
 
     case '5':
     label_5:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(5);
       NEXT_INSTRUCTION;
 
     case '6':
     label_6:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(6);
       NEXT_INSTRUCTION;
 
     case '7':
     label_7:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(7);
       NEXT_INSTRUCTION;
 
     case '8':
     label_8:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(8);
       NEXT_INSTRUCTION;
 
     case '9':
     label_9:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       push(9);
       NEXT_INSTRUCTION;
 
     case ' ': // space
     label_space:
-      pc_x = ((pc_x + x_direction)%ROWS + ROWS)%ROWS;
-      pc_y = ((pc_y + y_direction)%COLS + COLS)%COLS;
+      increment_pc();
       NEXT_INSTRUCTION;
 
     case '@': // end
@@ -400,8 +387,4 @@ next_instruction:
   }
 
   return 0;
-}
-
-void fill_labels_table(){
-
 }
