@@ -16,23 +16,6 @@ static long holdrand = 73L;
 signed long int stack[STACK_SIZE];
 void * labels[256];
 
-// int pc_x = 0;
-// int pc_y = 0; // row and collumn that the PC points to
-// int x_direction = 0;
-// int y_direction = 1; // current direction in each axis
-//
-// static inline void increment_pc() {
-//   pc_x += x_direction;
-//   pc_y += y_direction;
-//
-//   if(pc_x < 0) pc_x += ROWS;
-//   else if(pc_x >= ROWS) pc_x -= ROWS;
-//
-//   if(pc_y < 0) pc_y += COLS;
-//   else if(pc_y >= COLS) pc_y -= COLS;
-//
-// }
-
 void loader(){
   int i = 0, j = 0;
   char c;
@@ -44,7 +27,6 @@ void loader(){
   }
 
   while((c = getchar_unlocked()) != EOF){
-    // printf("%c",c);
     if(c == '\n'){
       i = (i+1)%ROWS;
       j = 0;
@@ -110,9 +92,6 @@ int main(void){
   labels[' '] = &&label_space;
   labels['@'] = &&label_end;
 
-  // TODO : implement direct threading & make PC a pointer
-  // -- change pop implementation to help branch prediction on (top==-1)
-  // reminder: GNU C allows global register values
 next_instruction:
   switch(code[pc_x][pc_y]){
     case '+': // add
@@ -229,11 +208,6 @@ next_instruction:
       increment_pc();
 
       c = code[pc_x][pc_y];
-      // if( c == '\0' ) c = ' ';
-      // if(c >= '0' && c <= '9'){
-      //   stack[++top] = c - '0';
-      //   goto label_stringmode;
-      // }
       if( c != '"'){
         push(c);
         goto label_stringmode;
@@ -289,7 +263,6 @@ next_instruction:
       increment_pc();
       a = pop();
       b = pop();
-      // if(code[a][b] == '\0') code[a][b] = ' ';
       push(code[a][b]);
       NEXT_INSTRUCTION;
 
