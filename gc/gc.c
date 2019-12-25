@@ -385,7 +385,7 @@ next_instruction:
         if(heap_top > HEAP_SIZE-2){
           // we run out of space..
           // lets collect some garbage
-          firstFree = collect_garbage(top);
+          firstFree = -1;
           goto new_allocation;
         }
         else{
@@ -402,17 +402,10 @@ next_instruction:
       else{
         // we have done garbage collection and we will use holes in the heap
         // to allocate new cells
+        new_allocation:
         if(firstFree == -1){
           firstFree = collect_garbage(top);
         }
-        new_allocation:
-        if(firstFree==-1){
-          printf("Out of space...\nExiting.\n");
-          return 0;
-        }
-
-        // printf("First free = %d\n",firstFree);
-
         int newCell = firstFree;
         b = pop();
         a = pop();
@@ -430,10 +423,6 @@ next_instruction:
     label_head:
       increment_pc();
       a = pop();
-      if(!(a & 0x1)){
-        printf("Warning! Not an address!\n");
-      }
-
       push(heap[a>>2]);
       NEXT_INSTRUCTION;
 
@@ -441,9 +430,6 @@ next_instruction:
     label_tail:
       increment_pc();
       a = pop();
-      if(!(a & 0x1)){
-        printf("Warning! Not an address!\n");
-      }
       push(heap[(a>>2)+1]);
       NEXT_INSTRUCTION;
 
@@ -474,17 +460,12 @@ void mark(long long int* top){
 }
 
 void mark_helper(long long int index){
-  long long int x;
 
-  for(int i=index; i <= index+1; i++){
-    x = heap[i];
-    if( (x & 0x1) && !(x & 0x2) ){
-      heap[i] = x | 0x2; // mark as visited
-      mark_helper(x>>2);
-    }
-    heap[i] = heap[i] | 0x2;
+  if(!(heap[index] & 0x2)){
+    heap[index] = heap[index] | 0x2;
+    if( heap[index] & 0x1 ) mark_helper(heap[index]>>2);
+    if( heap[index+1] & 0x1 ) mark_helper(heap[index+1]>>2);
   }
-
 }
 
 int sweep(){
