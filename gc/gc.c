@@ -18,10 +18,15 @@ long long int stack[STACK_SIZE];
 long long int heap[HEAP_SIZE];
 // 62bit integers -- we use the 2 LSBs for flags
 // integer[0] (LSB) = 1 iff this number is an address
-// integer[1] (LSB) is used by the GC
+// integer[1] (LSB) is used as a mark-bit by mark & sweep GC
 
 void * labels[256];
-int m = 0;
+
+int collect_garbage(long long int* top); // returns the index of the first free cons cell in the heap
+void mark(long long int* top);
+void mark_helper(long long int index);
+int sweep();
+
 
 void loader(FILE* fp){
   int i = 0, j = 0;
@@ -62,6 +67,7 @@ int main(int argc, char* argv[]){
   register long long int * top = stack-1; // top points to the top element of the stack
   register int heap_top = -1; // pointer to the current heap limit
   register long long int a,b; // local varriables to use for items that we pop out of the stack
+  register int firstFree = -73;
 
   loader(fp);
 
@@ -152,7 +158,6 @@ next_instruction:
     label_not:
       increment_pc();
       a = pop();
-      // printf("a = %d, a>>2 = %d\n",a,a>>2);
       push((((a>>2)!=0) ? 0 : 1)<<2);
       NEXT_INSTRUCTION;
 
@@ -374,16 +379,52 @@ next_instruction:
     case 'c': // cons
     label_cons:
       increment_pc();
+      if(firstFree == -73){
+        // this means that we haven't done any garbage collection
+        // so far and we just copy cells to the heap's top
+        if(heap_top > HEAP_SIZE-2){
+          // we run out of space..
+          // lets collect some garbage
+          firstFree = collect_garbage(top);
+          goto new_allocation;
+        }
+        else{
+          b = pop();
+          a = pop();
+          heap[++heap_top] = a;
+          long long int addr = (heap_top << 2) | 0x1;
+          push(addr);
 
-      b = pop();
-      a = pop();
-      heap[++heap_top] = a;
+          heap[++heap_top] = b;
+          NEXT_INSTRUCTION;
+        }
+      }
+      else{
+        // we have done garbage collection and we will use holes in the heap
+        // to allocate new cells
+        if(firstFree == -1){
+          firstFree = collect_garbage(top);
+        }
+        new_allocation:
+        if(firstFree==-1){
+          printf("Out of space...\nExiting.\n");
+          return 0;
+        }
 
-      long long int addr = (heap_top << 2) | 0x1;
-      push(addr);
+        // printf("First free = %d\n",firstFree);
 
-      heap[++heap_top] = b;
-      NEXT_INSTRUCTION;
+        int newCell = firstFree;
+        b = pop();
+        a = pop();
+
+        firstFree = heap[newCell]>>2; // get a pointer to the next available free cell
+        heap[newCell] = a;
+        heap[newCell+1] = b;
+        newCell = (newCell << 2) | 0x1;
+
+        push(newCell);
+        NEXT_INSTRUCTION;
+      }
 
     case 'h': // head
     label_head:
@@ -412,4 +453,55 @@ next_instruction:
   }
 
   return 0;
+}
+
+int collect_garbage(long long int* top){
+  mark(top);
+  return sweep();
+}
+
+void mark(long long int* top){
+  long long int *p = stack;
+  long long int x;
+
+  while(p <= top){
+    x = *(p++);
+    // if x is a pointer to the heap explore it
+    if( (x & 0x1) ){
+      mark_helper(x>>2);
+    }
+  }
+}
+
+void mark_helper(long long int index){
+  long long int x;
+
+  for(int i=index; i <= index+1; i++){
+    x = heap[i];
+    if( (x & 0x1) && !(x & 0x2) ){
+      heap[i] = x | 0x2; // mark as visited
+      mark_helper(x>>2);
+    }
+    heap[i] = heap[i] | 0x2;
+  }
+
+}
+
+int sweep(){
+  int lastFree = -1;
+  long long int x;
+
+  for(int i=0;i<HEAP_SIZE;i+=2){
+    x = heap[i];
+    if(!(x & 0x2)){
+      // we found some trash
+      heap[i] = (lastFree<<2) | 0x1;
+      lastFree = i;
+    }
+    else{
+      heap[i] = ((heap[i]>>2)<<2) | 0x1; // remove the markbit
+    }
+  }
+
+  return lastFree;
 }
