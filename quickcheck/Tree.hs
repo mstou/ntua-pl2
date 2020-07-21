@@ -14,10 +14,10 @@ module Tree (Tree(Node), size) where
                    return (Node x [])
 
             arbitraryTreeWithSize n =
-                frequency [ (10, do t <- arbitraryTreeWithSize 0
-                                    return t
+                frequency [ (1, do t <- arbitraryTreeWithSize 0
+                                   return t
                             )
-                          , (9, do x <- arbitrary
+                          , (2, do x <- arbitrary
                                    maxNumberOfChildren <- choose(1, n-1)
                                    childrenSizes <- chooseChildrenSizes maxNumberOfChildren (n-1)
                                    children <- sequence $ [arbitraryTreeWithSize] <*> childrenSizes
