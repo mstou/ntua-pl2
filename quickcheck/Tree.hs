@@ -1,4 +1,4 @@
-module Tree (Tree(Node), size) where
+module Tree (Tree(Node), size, height) where
   import Test.QuickCheck
 
   -- | A polymorphic n-ary tree data structure
@@ -42,3 +42,6 @@ module Tree (Tree(Node), size) where
   size (Node x xs) = 1 + childrenNodes
     where childrenSizes = map size xs
           childrenNodes = foldl (+) 0 childrenSizes
+
+  height (Node _ []) = 1
+  height (Node x xs) = 1 + foldl max 1 (map height xs)
