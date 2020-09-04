@@ -1,19 +1,17 @@
 import Data.List (foldl', scanl')
+import Control.Monad (replicateM)
 import Data.Map.Strict (fromDistinctAscList)
 import qualified Data.Map.Strict as Map
 import qualified Data.ByteString.Char8 as C
-import Data.ByteString.Lazy.Builder
-import Data.ByteString.Lazy.Builder.ASCII
+import Data.ByteString.Builder
 import Data.Monoid
 import Data.Int
-import Control.Monad (replicateM)
 import System.IO
 
-maxElement = 1000001
 -- sums = takeWhile (<maxElement) $ scanl1 (+) $ map (floor . (2**)) [0..]
 sums = [1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535,131071,262143,524287]
 
-sum' p = foldl' (\acc x -> (acc + x) `mod` p) 0
+sum' = foldl' (+) 0
 
 addNewTerm x = x `elem` sums
 
@@ -26,14 +24,16 @@ calculateDpList p = dp
               heads `seq` sumOfHeads `seq` tails `seq` newSumTerms `seq`
               (sumOfHeads : sumHeads (x+1) newSumTerms)
                 where heads = map head lists
-                      sumOfHeads = ((sum' p) heads) `mod` p
+                      sumOfHeads = (sum' heads) `mod` p
                       tails = map tail lists
                       newSumTerms = if (addNewTerm $ x+1) then (dp : tails) else tails
 
-
-getMapOfPrefixSums dp p = fromDistinctAscList $! prefixSumsWithKeys
-  where prefixSumsWithKeys = take maxElement $ zip [0..] prefixSums
-        prefixSums = scanl1 (\x y -> x `seq` (x+y) `mod` p) dp
+getMapOfPrefixSums p maxElement =
+  dp `seq` prefixSums `seq` prefixSumsWithKeys `seq`
+  fromDistinctAscList $! prefixSumsWithKeys
+  where prefixSumsWithKeys = tail $ zip [-1..] prefixSums
+        prefixSums = scanl' (\x y -> (x+y) `mod` p) 0 dp
+        dp = take (fromIntegral maxElement) (calculateDpList p)
 
 answerQuerry mapOfPrefixSums p (x,y) =
   mapOfPrefixSums `seq` prefixSumX `seq` prefixSumY `seq` (prefixSumY - prefixSumX) `mod` p
@@ -47,9 +47,10 @@ readInts = map parse . C.words <$> C.getLine
 main = do
   (n:m:[]) <- readInts
   querries <- replicateM (fromIntegral n) readInts
-  mapOfPrefixSums <- pure $ getMapOfPrefixSums (calculateDpList m) m
-  answers <- pure $ map ( (answerQuerry mapOfPrefixSums m) . toTuple ) querries
-  hPutBuilder stdout $ unlines_ $ map int64Dec (answers::[Int64])
+  maxElement <- pure $ querries `seq` maximum $ map maximum querries
+  mapOfPrefixSums <- pure $ maxElement `seq` getMapOfPrefixSums m (maxElement+1)
+  answers <- pure $ mapOfPrefixSums `seq` map ( (answerQuerry mapOfPrefixSums m) . toTuple ) querries
+  answers `seq` hPutBuilder stdout $ unlines_ $ map int64Dec (answers::[Int64])
     where
       unlines_ = mconcat . map (<> charUtf8 '\n')
       toTuple = (\(x:y:[]) -> (x,y))
