@@ -1,9 +1,12 @@
 import Data.Char
+import Data.Map (empty, insert, (!))
 import System.IO
 import Text.Read
 
-data Type  =  Tvar Int | Tfun Type Type                        deriving Eq
-data Expr  =  Evar String | Eabs String Expr | Eapp Expr Expr  deriving Eq
+data Type    =  Tvar Int | Tfun Type Type                        deriving Eq
+data Expr    =  Evar String | Eabs String Expr | Eapp Expr Expr  deriving Eq
+data Rule    =  Equal Type Type
+data Unifier =  Replace Int Type | TypeError
 
 -- Pretty printing of expressions
 
@@ -41,6 +44,25 @@ instance Show Type where
   showsPrec p (Tfun sigma tau) =
     showParen (p > 0) (showsPrec 1 sigma . (" -> " ++) . showsPrec 0 tau)
 
+-- Pretty printing of rules
+instance Show Rule where
+  show (Equal t1 t2) = (show t1) ++ " := " ++ (show t2)
+
+-- Type inference
+
+inferType :: Expr -> (Int, Type, [Rule])
+inferType e =
+  let
+    typeInferHelper g n (Evar x) = (n, Tvar (g ! x), [])
+    typeInferHelper g n (Eabs x expr) = (n', Tfun (Tvar n) t, c)
+      where (n', t, c) = typeInferHelper (insert x n g) (n+1) expr
+    typeInferHelper g n (Eapp expr1 expr2) = (n2 + 1, exprType, (Equal t1 (Tfun t2 exprType)) : (c1 ++ c2))
+      where (n1, t1, c1) = typeInferHelper g n expr1
+            (n2, t2, c2) = typeInferHelper g n1 expr2
+            exprType     = Tvar n2
+  in
+    typeInferHelper empty 0 e
+
 -- Main program
 
 readOne  =  do  s <- getLine
@@ -53,3 +75,4 @@ count n m  =  sequence $ take n $ repeat m
 main     =  do  n <- readLn
                 expressions <- count n readOne
                 print(expressions)
+                print(inferType (expressions !! 4))
