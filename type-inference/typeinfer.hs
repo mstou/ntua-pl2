@@ -6,7 +6,7 @@ import Text.Read
 data Type    =  Tvar Int | Tfun Type Type                        deriving Eq
 data Expr    =  Evar String | Eabs String Expr | Eapp Expr Expr  deriving Eq
 data Rule    =  Equal Type Type
-data Unifier =  Replace Int Type | TypeError
+data Unifier =  Replace Type Type | TypeError
 
 -- Pretty printing of expressions
 
@@ -45,8 +45,15 @@ instance Show Type where
     showParen (p > 0) (showsPrec 1 sigma . (" -> " ++) . showsPrec 0 tau)
 
 -- Pretty printing of rules
+
 instance Show Rule where
   show (Equal t1 t2) = (show t1) ++ " := " ++ (show t2)
+
+-- Pretty printing of unifiers
+instance Show Unifier where
+  show TypeError = "type error"
+  show (Replace t1 t2) =
+    "replace (" ++ (show t1) ++ ") with (" ++ (show t2) ++ ")"
 
 -- Type inference
 
@@ -63,6 +70,40 @@ inferType e =
   in
     typeInferHelper empty 0 e
 
+-- Unification of Rules using the Algorithm W
+
+-- Tools
+(Tvar x) `includes` (Tvar y) =  x == y
+(Tfun t1 t2) `includes` t = (t1 `includes` t) || (t2 `includes` t)
+
+isSimpleVar (Tvar _) = True
+isSimpleVar _ = False
+
+-- Applying functions to Types inside a Rule
+-- (that could be the Functor implementation of Rule, but it's not a parametric type)
+applyToRule :: (Type -> Type) -> Rule -> Rule
+applyToRule f (Equal t1 t2) = Equal (f t1) (f t2)
+
+-- Replacing a type
+replace :: Type -> Type -> Type -> Type
+replace t1 t2 (Tvar x) =
+  if (Tvar x) == t1 then t2 else (Tvar x)
+replace t1 t2 (Tfun a b) =
+  if (Tfun a b) == t1 then t2 else (Tfun (replace t1 t2 a) (replace t1 t2 b))
+
+unify :: [Rule] -> [Unifier]
+unify [] = []
+unify ((Equal t1 t2) : rs)
+  | t1 == t2  = unify rs
+
+  | (isSimpleVar t1) && (not $ t2 `includes` t1) =
+    (Replace t1 t2) : unify (map (applyToRule $ replace t1 t2) rs)
+
+  | (isSimpleVar t2) && (not $ t1 `includes` t2) =
+    (Replace t2 t1) : unify (map (applyToRule $ replace t2 t1) rs)
+
+  | otherwise = [TypeError]
+
 -- Main program
 
 readOne  =  do  s <- getLine
@@ -75,4 +116,6 @@ count n m  =  sequence $ take n $ repeat m
 main     =  do  n <- readLn
                 expressions <- count n readOne
                 print(expressions)
-                print(inferType (expressions !! 4))
+                print(inferType (expressions !! 3))
+                let (_, t, rules) = inferType (expressions !! 3)
+                print(unify rules)
