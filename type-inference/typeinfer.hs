@@ -1,5 +1,5 @@
 import Data.Char
-import Data.Map (empty, insert, (!))
+import Data.Map (empty, insert, lookup, (!))
 import System.IO
 import Text.Read
 
@@ -104,6 +104,44 @@ unify ((Equal t1 t2) : rs)
 
   | otherwise = [TypeError]
 
+-- Apply the unified rules
+applyRules :: Type -> [Unifier] -> Maybe Type
+applyRules t [] = Just t
+applyRules t (TypeError : xs) = Nothing
+applyRules t ((Replace t1 t2) : xs) = applyRules (replace t1 t2 t) xs
+
+-- Re-assign varriable numbers
+third (_, _, x) = x
+fromJust (Just x) = x
+
+reorder :: Type -> Type
+reorder t =
+  let
+    reorderHelper usedVars nextVar (Tvar x) = (newUsedVars, newNextVar, Tvar num)
+      where lookupResult = Data.Map.lookup x usedVars
+            num = if lookupResult == Nothing then nextVar else fromJust lookupResult
+            newNextVar = if lookupResult == Nothing then nextVar+1 else nextVar
+            newUsedVars = if lookupResult == Nothing then (insert x num usedVars) else usedVars
+
+    reorderHelper usedVars nextVar (Tfun a b) = (newUsedVars, newNextVar, Tfun a' b')
+      where (map', var', a') = reorderHelper usedVars nextVar a
+            (newUsedVars, newNextVar, b') = reorderHelper map' var' b
+  in
+    third $ reorderHelper empty 0 t
+
+-- Full pipeline
+typeInString expr =
+  let
+    (_, t, rules) = inferType expr
+    unifiedRules = unify rules
+    finalType = applyRules t unifiedRules
+    reorderedVars = reorder <$> finalType
+    typeInString = if reorderedVars == Nothing
+                    then "type error"
+                    else show $ fromJust reorderedVars
+  in
+    typeInString
+
 -- Main program
 
 readOne  =  do  s <- getLine
@@ -115,7 +153,12 @@ count n m  =  sequence $ take n $ repeat m
 
 main     =  do  n <- readLn
                 expressions <- count n readOne
-                print(expressions)
-                print(inferType (expressions !! 3))
-                let (_, t, rules) = inferType (expressions !! 3)
-                print(unify rules)
+                mapM putStrLn (typeInString <$> expressions)
+                -- print(expressions)
+                -- print(inferType (expressions !! 4))
+                -- let (_, t, rules) = inferType (expressions !! 4)
+                -- let unifiedRules = unify rules
+                -- let finalType = applyRules t unifiedRules
+                -- print(unifiedRules)
+                -- print(finalType)
+                -- print( reorder <$> finalType )
