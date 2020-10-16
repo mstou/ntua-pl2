@@ -79,6 +79,9 @@ inferType e =
 isSimpleVar (Tvar _) = True
 isSimpleVar _ = False
 
+isTfun (Tfun _ _) = True
+isTfun _ = False
+
 -- Applying functions to Types inside a Rule
 -- (that could be the Functor implementation of Rule, but it's not a parametric type)
 applyToRule :: (Type -> Type) -> Rule -> Rule
@@ -101,6 +104,11 @@ unify ((Equal t1 t2) : rs)
 
   | (isSimpleVar t2) && (not $ t1 `includes` t2) =
     (Replace t2 t1) : unify (map (applyToRule $ replace t2 t1) rs)
+
+  | (isTfun t1) && (isTfun t2) =
+    let (Tfun a11 a12)    = t1
+        (Tfun a21 a22)    = t2
+    in  unify $ (Equal a21 a11) : (Equal a22 a12) : rs
 
   | otherwise = [TypeError]
 
@@ -146,7 +154,6 @@ typeInString expr =
 
 readOne  =  do  s <- getLine
                 let e = read s :: Expr
-                -- putStrLn ("Parsed: " ++ show e)
                 return e
 
 count n m  =  sequence $ take n $ repeat m
@@ -154,11 +161,3 @@ count n m  =  sequence $ take n $ repeat m
 main     =  do  n <- readLn
                 expressions <- count n readOne
                 mapM putStrLn (typeInString <$> expressions)
-                -- print(expressions)
-                -- print(inferType (expressions !! 4))
-                -- let (_, t, rules) = inferType (expressions !! 4)
-                -- let unifiedRules = unify rules
-                -- let finalType = applyRules t unifiedRules
-                -- print(unifiedRules)
-                -- print(finalType)
-                -- print( reorder <$> finalType )
