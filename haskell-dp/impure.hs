@@ -1,32 +1,54 @@
 {-# OPTIONS_GHC -static -rtsopts -O2 -optc-O2 -fstrictness #-}
-import Data.Array
-import Data.List (foldl', scanl')
-import Control.Monad (replicateM)
-import qualified Data.ByteString.Char8 as C
-import Data.ByteString.Builder
-import System.IO as SIO
-import Data.Monoid
 import Data.Int
+import Data.Array.ST
+import Data.Array.Unboxed
+import Data.Monoid
+import System.IO as SIO
+import Data.ByteString.Builder
+import Data.List (foldl', scanl')
+import Control.Monad.ST
+import Control.Monad (replicateM, forM_, mapM, when)
+import Control.Monad.Trans.State
+import qualified Data.ByteString.Char8 as C
+import qualified Data.Array.MArray as MArray
+
+sum' = foldl' (+) 0
 
 -- sums = takeWhile (<maxElement) $ scanl1 (+) $ map (floor . (2**)) [0..]
 sums = [1,3,7,15,31,63,127,255,511,1023,2047,4095,8191,16383,32767,65535,131071,262143,524287]
 
-dp i l p = result
-  where
-    previousIndices = takeWhile (>=0) $ map (\x -> i - x) sums
-    result = foldl' (\acc x -> (acc + (l ! x)) `mod` p) 0 previousIndices
-
 -- dp[1], dp[2], ...
-calculateDpList p k = l
+calculateDpList p k = dpArray
   where
-    l = array (0,k) ((0,2) : (1,2) : [(i, dp i l p) | i <- [2..k]])
+    dpArray = runSTUArray $ do
+      arr <- MArray.newArray (0, k) (fromIntegral (-1))
+      writeArray arr 0 2
+      writeArray arr 1 2
+      forM_ [2..k] $ \i -> do
+        val <- readArray arr i
+        when (val == -1) $ do
+          let previousIndices = takeWhile (>=0) $ map (\x -> i - x) sums
+          values <- mapM (readArray arr) previousIndices
+          let newValue = (sum' values) `mod` p
+          writeArray arr i newValue
+      return arr
 
-prefixSums l p k = a
+prefixSums :: (UArray Int Int64) -> Int64 -> Int -> (UArray Int Int64)
+prefixSums l p k = prefixSumsArray
   where
-    a = array (0,k) ( (0, 1) : [(i, ((a ! (i-1)) + (l ! i)) `mod` p) | i <- [1..k]])
+    prefixSumsArray = runSTUArray $ do
+      arr <- MArray.newArray (0,k) (fromIntegral (-1))
+      writeArray arr 0 1
+      forM_ [1..k] $ \i -> do
+        val <- readArray arr i
+        when (val == -1) $ do
+          prev <- readArray arr (i-1)
+          let newValue = l ! i
+          let newSum = (prev + newValue) `mod` p
+          writeArray arr i newSum
+      return arr
 
 answerQuerry prefixSums p (0,y) = prefixSums ! y `mod` p
--- answerQuerry prefixSums p (1,y) = ((prefixSums ! y) - 1) `mod` p
 answerQuerry prefixSums p (x,y) = ((prefixSums ! y) - (prefixSums ! (x-1))) `mod` p
 
 
@@ -49,10 +71,10 @@ main = do
   (n:m:[])        <- readInts
   querries        <- readAllQuerries
   maxElement      <- pure $ querries `seq` maximum $ map max' querries
-  dpList          <- pure $ calculateDpList m (maxElement+1)
-  prefixSumsArray <- pure $ maxElement `seq` prefixSums dpList m (maxElement+1)
+  dpList          <- pure $ maxElement `seq` calculateDpList m (maxElement+1)
+  prefixSumsArray <- pure $ dpList `seq` prefixSums dpList m (maxElement+1)
   answers         <- pure $ prefixSumsArray `seq` map (answerQuerry prefixSumsArray m) querries
-  hPutBuilder stdout $ unlines_ $ map int64Dec (answers::[Int64])
+  answers `seq` hPutBuilder stdout $ unlines_ $ map int64Dec (answers::[Int64])
     where
       max' (a,b) = max a b
       unlines_ = mconcat . map (<> charUtf8 '\n')
