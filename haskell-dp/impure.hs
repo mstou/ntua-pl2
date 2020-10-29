@@ -61,11 +61,15 @@ readAllQuerries :: IO [(Int,Int)]
 readAllQuerries = allInts `seq` querries
   where parse s = let Just (n, _) = C.readInt s in n
         allInts = map parse . C.words <$> (C.hGetContents SIO.stdin)
-        splitInts _ a b [] = (reverse a, reverse b)
-        splitInts 0 a b (x:xs) = splitInts 1 (x:a) b xs
-        splitInts 1 a b (x:xs) = splitInts 0 a (x:b) xs
-        zipLists (a,b) = zip a b
-        querries = zipLists . (splitInts 0 [] []) <$> allInts
+        split l =
+          let
+          (a, b, _) = foldr
+                       (\x (a, b, t) -> if t == 1 then (a, x:b, 0) else (x:a, b,1))
+                       ([], [], 1)
+                       l
+          in
+            zip a b
+        querries = split <$> allInts
 
 main = do
   (n:m:[])        <- readInts
