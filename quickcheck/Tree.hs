@@ -5,8 +5,17 @@ module Tree (Tree(Node), size, height) where
   data Tree a = Node a [Tree a]
     deriving (Show, Eq)
 
+  -- | Helping functions that compute the size and height of a tree
+  size (Node _ []) = 1
+  size (Node x xs) = 1 + childrenNodes
+    where childrenSizes = map size xs
+          childrenNodes = foldl (+) 0 childrenSizes
+
+  height (Node _ []) = 1
+  height (Node x xs) = 1 + foldl max 1 (map height xs)
+
+  -- | Implementing Arbitrary for Tree
   instance Arbitrary a => Arbitrary (Tree a) where
-    -- Chooses up to n numbers s.t. they add up to something smaller than k
 
     arbitrary = sized arbitraryTreeWithSize
       where arbitraryTreeWithSize 0 =
@@ -33,11 +42,9 @@ module Tree (Tree(Node), size, height) where
                          xs <- chooseChildrenAux (n-1) (k-x) (x:l)
                          return xs
 
-
-  size (Node _ []) = 1
-  size (Node x xs) = 1 + childrenNodes
-    where childrenSizes = map size xs
-          childrenNodes = foldl (+) 0 childrenSizes
-
-  height (Node _ []) = 1
-  height (Node x xs) = 1 + foldl max 1 (map height xs)
+    shrink (Node _ []) = []
+    shrink (Node x children) = keepTheRoot ++ keepAChild ++ keepAllChilds
+      where
+          keepTheRoot = [(Node x [])]
+          keepAChild  = children -- quickcheck will recursively call shrink on them
+          keepAllChilds = [(Node x shrinkedChildren) | shrinkedChildren <- mapM shrink children]
