@@ -22,7 +22,7 @@ module TreeTest(prop_tree_trivial,
           aux ((Node (x,n) l) : cs) ts = aux cs (n:ts)
 
   prop_tree_trivial t =
-    collect (height t, size t) $ t == t
+    collect (height t, size t, leaves t) $ t == t
       where types = (t :: Tree Int)
 
   prop_tree_traversal_should_leave_height_unchanged tour t =

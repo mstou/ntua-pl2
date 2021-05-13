@@ -1,4 +1,4 @@
-module Tree (Tree(Node), size, height) where
+module Tree (Tree(Node), size, height, leaves) where
   import Test.QuickCheck
 
   -- | A polymorphic n-ary tree data structure
@@ -13,6 +13,9 @@ module Tree (Tree(Node), size, height) where
 
   height (Node _ []) = 1
   height (Node x xs) = 1 + foldl max 1 (map height xs)
+
+  leaves (Node _ []) = 1
+  leaves (Node x xs) = foldl (+) 0 $ map leaves xs
 
   -- | Implementing Arbitrary for Tree
   instance Arbitrary a => Arbitrary (Tree a) where
