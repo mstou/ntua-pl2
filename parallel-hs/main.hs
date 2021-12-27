@@ -1,40 +1,35 @@
 import Data.Int
+import Control.Monad
 
-factorials :: Int64 -> Int64 -> Int64 -> (Int64,Int64,Int64) -> Int64 -> Int64 -> (Int64,Int64,Int64)
-factorials n k p (x,y,z) i f =
-  if i > n
-    then (x,y,z)
-    else factorials n k p (x',y',z') i' f'
-  where
-    x' = if i == n then f else x
-    y' = if i == (n-k) then f else y
-    z' = if i == k then f else z
-    i' = i+1
-    f' = (f * i') `mod` p
-
-exponentiate :: Int64 -> Int64 -> Int64 -> Int64
+exponentiate :: Int64 -> Int64 -> Int64 -> Int64 -> Int64
 -- Calculates (a ^ n) mod p
-exponentiate _ 0 _ = 1
+exponentiate _ 0 _ result = result
 
-exponentiate a n p =
-  if n `mod` 2 == 0
-    then half_n_squared
-    else (half_n_squared * a) `mod` p
+exponentiate a n p r = exponentiate a' n' p r'
   where
-    half_n_squared = (half_n ^ 2) `mod` p
-    half_n = exponentiate a (n `div` 2) p
+    a' = (a*a) `mod` p
+    n' = n `div` 2
+    r' = if n `mod` 2 == 1 then (r*a) `mod` p else r
 
 inverse :: Int64 -> Int64 -> Int64
 -- Calculates the inverse of x in modulo p
-inverse x p = exponentiate x (p-2) p
+inverse x p = exponentiate x (p-2) p 1
 
+nom :: Int64 -> Int64 -> Int64 -> Int64
+nom n k p = foldl (\x acc -> (x*acc) `mod` p) 1 [n-k+1..n]
 
-solve n k p = binom
+den :: Int64 -> Int64 -> Int64
+den k p = foldl (\x acc -> (x*acc) `mod` p) 1 [1..k]
+
+solve ([n,k,p]) = binom
   where
-    (n_fact, n_k_fact, k_fact) = factorials n k p (1,1,1) 0 1
-    n_k_inv = inverse n_k_fact p
-    k_inv = inverse k_fact p
-    binom = (((n_fact * n_k_inv) `mod` p) * k_inv) `mod` p
+    nominator = nom n k p
+    denominator = den k p
+    inverse_den = inverse denominator p
+    binom = (nominator * inverse_den) `mod` p
 
 main = do
-  return ()
+  q <- readLn
+  allLines <- replicateM q getLine
+  let queries = ((map read) . words) <$> allLines :: [[Int64]]
+  mapM (putStrLn . show . solve) queries
