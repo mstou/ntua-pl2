@@ -18,7 +18,7 @@ with requests.Session() as s:
         response = s.get(url)
         if response.status_code != 200:
             print('Error requesting a new question..')
-            print(f'Response status {page.status_code}')
+            print(f'Response status {response.status_code}')
             break
 
         parser = BeautifulSoup(response.content, 'html.parser')
@@ -29,14 +29,15 @@ with requests.Session() as s:
             p = int(parser.find(id='P').text)
         except:
             print('Error parsing the page.\n\n')
-            print(parser.prettify())
             break
 
         print(f'Question {q}: calculate C({n},{k}) % {p}')
         ans = binomial(n,k,p)
         print(f'Answering {ans} ...')
 
-        response = s.post(url, data={'answer': ans})
+        respose_dir = parser.find(id='f')['action']
+        response = s.post(url+respose_dir, data={'answer': ans})
+
         if response.status_code != 200:
             print('Error answering the question..')
             print(f'Response status {response.status_code}')

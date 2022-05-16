@@ -1,0 +1,130 @@
+
+<!DOCTYPE html PUBLIC
+          "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>Count combinations in modular arithmetic!</title>
+<style type="text/css">
+<!--
+body,td,th {
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: x-large;
+  color: #CCCCCC;
+}
+
+body {
+  background-color: #333399;
+}
+
+.question { color: #FFCC33; }
+.emph     { color: #99ee99; }
+.alert    { color: #ee77aa; }
+
+.right {
+  color: #33FF66;
+  font-weight: bold;
+}
+.wrong {
+  color: #FF3366;
+  font-weight: bold;
+}
+
+a:link    { color: #CCFFFF; }
+a:visited { color: #CCFFFF; }
+
+input {
+  background-color: #eeee66;
+  color: #333399;
+}
+
+code {
+  font-family: Consolas, "Andale Mono", "Courier New", monospace, sans-serif;
+  color: #eeee99;
+  font-size: 120%;
+}
+
+span.removed {
+  color: #ff9977;
+  text-decoration: underline red;
+}
+
+code.block {
+  background-color: #66eeee;
+  color: #993333;
+  overflow-wrap: break-word;
+  display: block;
+  border: 1px solid black;
+  padding: 8px;
+  width: 95%;
+  line-height: 1em;
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+input.box {
+  overflow-wrap: break-word;
+  font-family: Consolas, "Andale Mono", "Courier New", monospace, sans-serif;
+  font-size: 120%;
+  color: #333333;
+  border: 1px solid black;
+  padding: 8px;
+}
+
+input.button {
+  font-size: 120%;
+  background-color: #99ee99;
+  color: #333399;
+  border: 1px solid black;
+  padding: 8px;
+}
+
+-->
+</style>
+</head>
+<body>
+<h1>Count combinations in modular arithmetic!</h1>
+<p>In how many ways can we choose <span class="emph">K</span> elements out
+  of a set of <span class="emph">N</span> elements, if their order is not
+  important?  Obviously, the answer is <span class="emph">C(N, K)</span>,
+  in other words,
+  a <a href="https://en.wikipedia.org/wiki/Binomial_coefficient">binomial
+  coefficient</a>.
+</p>
+<p>This number may be very large and, for this reason, we want to calculate
+  the remainder (modulo) of its division by a large prime number
+  <span class="emph">P</span>.
+<p>
+<p>Assume that <span class="emph">0 ≤ K ≤ N < P ≤ 10<sup>9</sup></span>
+  and that <span class="emph">P</span> is a prime number.</p>
+<blockquote>
+  <p>For example, if <span class="emph">N = 42</span>,
+    <span class="emph">K = 17</span> and
+    <span class="emph">P = 690419</span>,
+    the result is <span class="emph">188587</span>.
+  </p>
+  <p>In fact, <span class="emph">C(42, 17) = 254661927156 =
+    368851 × 690419 + 188587</span>.
+  </p>
+</blockquote>
+
+<hr />
+
+<p><span class="question">Question {{question_num}}</span>
+  <p>What is the value of
+  <span class="emph">C(<span id="N">{{n}}</span>,
+    <span id="K">{{k}}</span>) modulo
+    <span id="P">{{p}}</span></span>?
+</p>
+     <p class="{{answer}}">
+      {{answer_msg}}
+     </p>
+     <form action="{{url_new_question}}" id="r" method="post" name="r">
+      <input autofocus="" class="button" id="again" name="again" type="submit" value="Continue!"/>
+     </form>
+    </p>
+   </p>
+  </p>
+ </body>
+</html>

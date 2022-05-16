@@ -28,6 +28,3 @@ def binomial(n,k,p):
             n_k_fact = fact
 
     return ((n_fact * inverse(n_k_fact,p))%p * inverse(k_fact,p))%p
-
-if __name__ == '__main__':
-    binomial(264790719,74272,758260777)
