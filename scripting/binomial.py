@@ -11,10 +11,23 @@ def inverse(x,p):
     return modpow(x,p-2,p)
 
 def binomial(n,k,p):
-    factorial = {}
-    factorial[0] = 1
+    fact = 1 # 0!
+    n_fact = None
+    k_fact = None
+    n_k_fact = None
 
     for i in range(1,n+1):
-        factorial[i] = (factorial[i-1] * i)%p
+        fact = (fact * i)%p
+        if i == n:
+            n_fact  = fact
 
-    return ((factorial[n] * inverse(factorial[n-k],p))%p * inverse(factorial[k],p))%p
+        if i == k:
+            k_fact = fact
+
+        if i == n-k:
+            n_k_fact = fact
+
+    return ((n_fact * inverse(n_k_fact,p))%p * inverse(k_fact,p))%p
+
+if __name__ == '__main__':
+    binomial(264790719,74272,758260777)
