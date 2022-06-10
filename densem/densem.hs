@@ -6,13 +6,47 @@ data P = Pint Integer | Ptrue | Pfalse
        | Pseq P P | Pcond P P | Ploop P
 
 -- Denotational semantics
+fix :: (a -> a) -> a
+fix f = f (fix f)
+
 
 data V = VI Integer | VB Bool
 
 type S = [V]
 
+funcLoop p f ((VB v):s) = if v then f $ sem p s else s
+
 sem :: P -> S -> S
-sem p s = [VI 42]
+-- sem _ _ = [VI 42]
+
+sem (Pint n) s = (VI n) : s
+sem Ptrue  s = (VB True)  : s
+sem Pfalse s = (VB False) : s
+
+sem Padd ((VI n1) : (VI n2) : s) = (VI (n1+n2)) : s
+sem Pmul ((VI n1) : (VI n2) : s) = (VI (n1*n2)) : s
+sem Pdiv ((VI n1) : (VI n2) : s) = (VI q) : (VI r) : s
+  where q = n2 `div` n1
+        r = n2 `mod` n1
+sem Pneg ((VI n) : s) = (VI (-n)) : s
+
+sem Plt  ((VI n1) : (VI n2) : s) = (VB (n2 < n1))  : s
+sem Peq  ((VI n1) : (VI n2) : s) = (VB (n1 == n2)) : s
+sem Peq  ((VB v1) : (VB v2) : s) = (VB (v1 == v2)) : s
+sem Pand ((VB v1) : (VB v2) : s) = (VB (v1 && v2)) : s
+sem Pnot ((VB v) : s) = (VB $ not v) : s
+
+sem Pnop        s             = s
+sem Pdup   (v : s)            = v : v : s
+sem Ppop   (v : s)            = s
+sem Pswap  (v1 : v2 : s)      = v2 : v1 : s
+sem Pswap2 (v1 : v2 : v3 : s) = v2 : v3 : v1 : s
+
+sem (Pseq p1 p2) s = sem p2 $ sem p1 s
+sem (Pcond p1 p2) ((VB v) : s) = if v then sem p1 s else sem p2 s
+sem (Ploop p) s = fix (funcLoop p) $ s
+
+
 
 -- Main function: interpreter
 
@@ -41,7 +75,7 @@ instance Show P where
   showsPrec d Pswap2 = ("swap2" ++)
   showsPrec d (Pseq p1 p2) =
     showParen (d > 0) $ showsPrec 1 p1 . (" " ++) . showsPrec 0 p2
-  showsPrec d (Pcond p1 p2) = 
+  showsPrec d (Pcond p1 p2) =
     ("cond [" ++) . showsPrec 0 p1 . (" | " ++)
                   . showsPrec 0 p2 . ("]" ++)
   showsPrec d (Ploop p) = ("loop [" ++) . showsPrec 0 p . ("]" ++)
@@ -74,7 +108,7 @@ instance Read P where
     readParen False   (\s -> [(Ppop, r)        | ("pop", r) <- lex s]) s ++
     readParen False   (\s -> [(Pswap, r)       | ("swap", r) <- lex s]) s ++
     readParen False   (\s -> [(Pswap2, r)      | ("swap2", r) <- lex s]) s ++
-    readParen (d > 0) (\s -> [(Pseq p1 p2, r)  | (p1, t) <- readsPrec 1 s, 
+    readParen (d > 0) (\s -> [(Pseq p1 p2, r)  | (p1, t) <- readsPrec 1 s,
                                                  (p2, r) <- readsPrec 0 t]) s ++
     readParen False   (\s -> [(Pcond p1 p2, r) | ("cond", t1) <- lex s,
                                                  ("[", t2) <- lex t1,
